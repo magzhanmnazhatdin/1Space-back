@@ -15,15 +15,6 @@ import (
 	"google.golang.org/api/option"
 )
 
-// Структура клуба
-type ComputerClub struct {
-	ID           string  `json:"id"`
-	Name         string  `json:"name"`
-	Address      string  `json:"address"`
-	PricePerHour float64 `json:"price_per_hour"`
-	AvailablePCs int     `json:"available_pcs"`
-}
-
 // Глобальные переменные
 var client *firestore.Client
 var firebaseAuth *auth.Client
@@ -31,7 +22,7 @@ var firebaseAuth *auth.Client
 // Инициализация Firestore и Firebase Auth
 func initFirestore() {
 	ctx := context.Background()
-	opt := option.WithCredentialsFile("space-fcde8-firebase-adminsdk-fbsvc-d19e7b688e.json")
+	opt := option.WithCredentialsFile("space-fcde8-firebase-adminsdk-fbsvc-e6a9a275c7.json")
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
 		log.Fatalf("Ошибка подключения к Firebase: %v", err)
@@ -209,6 +200,12 @@ func main() {
 	r.POST("/clubs", AuthMiddleware(), createClub)
 	r.PUT("/clubs/:id", AuthMiddleware(), updateClub)
 	r.DELETE("/clubs/:id", AuthMiddleware(), deleteClub)
+
+	// Маршруты для бронирований
+	r.GET("/clubs/:id/computers", getClubComputers)
+	r.GET("/bookings", AuthMiddleware(), getUserBookings)
+	r.POST("/bookings", AuthMiddleware(), createBooking)
+	r.PUT("/bookings/:id/cancel", AuthMiddleware(), cancelBooking)
 
 	r.Run(":8080")
 }
