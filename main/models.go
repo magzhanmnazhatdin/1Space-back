@@ -1,12 +1,19 @@
-// booking.go
 package main
 
 import (
 	"time"
 )
 
+// Структура клуба
+type ComputerClub struct {
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Address      string  `json:"address"`
+	PricePerHour float64 `json:"price_per_hour"`
+	AvailablePCs int     `json:"available_pcs"`
+}
+
 // Модель бронирования
-// booking.go
 type Booking struct {
 	ID         string    `json:"id"`
 	ClubID     string    `json:"club_id"`
@@ -16,7 +23,7 @@ type Booking struct {
 	StartTime  time.Time `json:"start_time"`
 	EndTime    time.Time `json:"end_time"`
 	TotalPrice float64   `json:"total_price"`
-	Status     string    `json:"status"`
+	Status     string    `json:"status"` // "active", "cancelled", "completed"
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -27,12 +34,4 @@ type Computer struct {
 	Number      int    `json:"number"`
 	Description string `json:"description"`
 	IsAvailable bool   `json:"is_available"`
-}
-
-type ComputerClub struct {
-	ID           string  `json:"id"`
-	Name         string  `json:"name"`
-	Address      string  `json:"address"`
-	PricePerHour float64 `json:"price_per_hour"`
-	AvailablePCs int     `json:"available_pcs"`
 }
