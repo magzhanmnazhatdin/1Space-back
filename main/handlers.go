@@ -47,8 +47,8 @@ func createBooking(c *gin.Context) {
 	uid := c.MustGet("uid").(string)
 
 	var booking struct {
-		ClubID    string    `json:"club_id"`
-		PCNumber  int       `json:"pc_number"`
+		ClubID    string    `json:"ClubID"`
+		PCNumber  int       `json:"Number"`
 		StartTime time.Time `json:"start_time"`
 		Hours     int       `json:"hours"`
 	}
@@ -70,8 +70,8 @@ func createBooking(c *gin.Context) {
 
 	// Проверяем доступность компьютера
 	computerDocs, err := client.Collection("computers").
-		Where("club_id", "==", booking.ClubID).
-		Where("number", "==", booking.PCNumber).
+		Where("ClubID", "==", booking.ClubID).
+		Where("Number", "==", booking.PCNumber).
 		Limit(1).
 		Documents(context.Background()).
 		GetAll()
@@ -91,8 +91,8 @@ func createBooking(c *gin.Context) {
 
 	// Проверяем нет ли пересечений по времени
 	bookingsQuery := client.Collection("bookings").
-		Where("club_id", "==", booking.ClubID).
-		Where("pc_number", "==", booking.PCNumber).
+		Where("ClubID", "==", booking.ClubID).
+		Where("Number", "==", booking.PCNumber).
 		Where("status", "==", "active").
 		Where("end_time", ">", time.Now())
 
@@ -131,7 +131,7 @@ func createBooking(c *gin.Context) {
 
 	// Обновляем статус компьютера
 	_, err = client.Collection("computers").Doc(computer.ID).Update(context.Background(), []firestore.Update{
-		{Path: "is_available", Value: false},
+		{Path: "IsAvailable", Value: false},
 	})
 
 	if err != nil {
