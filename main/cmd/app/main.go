@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"main/internal/deliveries/handlers"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -20,7 +21,7 @@ var firebaseAuth *auth.Client
 // Инициализация Firestore и Firebase Auth
 func initFirestore() {
 	ctx := context.Background()
-	opt := option.WithCredentialsFile("space-fcde8-firebase-adminsdk-fbsvc-d19e7b688e.json")
+	opt := option.WithCredentialsFile("../../configs/firebase.json")
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
 		log.Fatalf("Ошибка подключения к Firebase: %v", err)
@@ -50,26 +51,28 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	handlers.Init(client)
+
 	// Открытые маршруты
-	r.GET("/clubs", getAllClubs)
-	r.GET("/clubs/:id", getClubByID)
-	r.POST("/auth", authHandler)
-	r.GET("/computers", getAllComputers)
+	r.GET("/clubs", handlers.GetAllClubs)
+	r.GET("/clubs/:id", handlers.GetClubByID)
+	r.POST("/auth", handlers.AuthHandler)
+	r.GET("/computers", handlers.GetAllComputers)
 
 	// Защищенные маршруты (только проверка аутентификации)
-	r.POST("/clubs", AuthMiddleware(), createClub)
-	r.PUT("/clubs/:id", AuthMiddleware(), updateClub)
-	r.DELETE("/clubs/:id", AuthMiddleware(), deleteClub)
+	r.POST("/clubs", handlers.AuthMiddleware(), handlers.CreateClub)
+	r.PUT("/clubs/:id", handlers.AuthMiddleware(), handlers.UpdateClub)
+	r.DELETE("/clubs/:id", handlers.AuthMiddleware(), handlers.DeleteClub)
 
 	// Маршруты для бронирований
-	r.GET("/clubs/:id/computers", getClubComputers)
-	r.GET("/bookings", AuthMiddleware(), getUserBookings)
-	r.POST("/bookings", AuthMiddleware(), createBooking)
-	r.PUT("/bookings/:id/cancel", AuthMiddleware(), cancelBooking)
+	r.GET("/clubs/:id/computers", handlers.GetClubComputers)
+	r.GET("/bookings", handlers.AuthMiddleware(), handlers.GetUserBookings)
+	r.POST("/bookings", handlers.AuthMiddleware(), handlers.CreateBooking)
+	r.PUT("/bookings/:id/cancel", handlers.AuthMiddleware(), handlers.CancelBooking)
 	authRoutes := r.Group("/")
-	authRoutes.Use(AuthMiddleware())
+	authRoutes.Use(handlers.AuthMiddleware())
 	{
-		authRoutes.POST("/clubs/:id/computers", createComputerList)
+		authRoutes.POST("/clubs/:id/computers", handlers.CreateComputerList)
 	}
 
 	r.Run(":8080")

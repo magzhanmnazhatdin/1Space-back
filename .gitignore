@@ -26,3 +26,9 @@ go.work.sum
 
 *.json
 !firebase-config.json  # (optional: allow a safe config file)
+
+.idea/
+*.exe
+.vscode/
+mocks/
+vendor/

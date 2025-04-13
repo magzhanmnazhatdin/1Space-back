@@ -1,10 +1,12 @@
 // handlers.go
-package main
+package handlers
 
 import (
 	"context"
+	"firebase.google.com/go/v4/auth"
 	"fmt"
 	"log"
+	"main/internal/domain/models"
 	"net/http"
 	"strings"
 	"time"
@@ -13,11 +15,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const CLUBID string = "ClubID"
+
+var client *firestore.Client
+var firebaseAuth *auth.Client
+
+func Init(fsClient *firestore.Client) {
+	client = fsClient
+}
+
 func generateNewID() string {
 	return client.Collection("bookings").NewDoc().ID
 }
 
-func getClubComputers(c *gin.Context) {
+func GetClubComputers(c *gin.Context) {
 	clubID := c.Param("id")
 
 	// Получаем список компьютеров для клуба
@@ -31,9 +42,9 @@ func getClubComputers(c *gin.Context) {
 		return
 	}
 
-	computers := make([]Computer, 0)
+	computers := make([]models.Computer, 0)
 	for _, doc := range docs {
-		var comp Computer
+		var comp models.Computer
 		if err := doc.DataTo(&comp); err == nil {
 			comp.ID = doc.Ref.ID
 			computers = append(computers, comp)
@@ -43,14 +54,113 @@ func getClubComputers(c *gin.Context) {
 	c.JSON(http.StatusOK, computers)
 }
 
-func createBooking(c *gin.Context) {
+//func createBooking(c *gin.Context) {
+//	uid := c.MustGet("uid").(string)
+//
+//	var booking struct {
+//		ClubID    string    `json:"ClubID"`
+//		PCNumber  int       `json:"Number"`
+//		StartTime time.Time `json:"start_time"`
+//		Hours     int       `json:"hours"`
+//	}
+//
+//	if err := c.ShouldBindJSON(&booking); err != nil {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+//		return
+//	}
+//
+//	// Получаем информацию о клубе
+//	clubDoc, err := client.Collection("clubs").Doc(booking.ClubID).Get(context.Background())
+//	if err != nil {
+//		c.JSON(http.StatusNotFound, gin.H{"error": "Клуб не найден"})
+//		return
+//	}
+//
+//	var club ComputerClub
+//	clubDoc.DataTo(&club)
+//
+//	// Проверяем доступность компьютера
+//	computerDocs, err := client.Collection("computers").
+//		Where("ClubID", "==", booking.ClubID).
+//		Where("Number", "==", booking.PCNumber).
+//		Limit(1).
+//		Documents(context.Background()).
+//		GetAll()
+//
+//	if err != nil || len(computerDocs) == 0 {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": "Компьютер не найден"})
+//		return
+//	}
+//
+//	var computer Computer
+//	computerDocs[0].DataTo(&computer)
+//
+//	if !computer.IsAvailable {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": "Компьютер уже занят"})
+//		return
+//	}
+//
+//	// Проверяем нет ли пересечений по времени
+//	bookingsQuery := client.Collection("bookings").
+//		Where("ClubID", "==", booking.ClubID).
+//		Where("Number", "==", booking.PCNumber).
+//		Where("status", "==", "active").
+//		Where("end_time", ">", time.Now())
+//
+//	existingBookings, err := bookingsQuery.Documents(context.Background()).GetAll()
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+//		return
+//	}
+//
+//	if len(existingBookings) > 0 {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": "Компьютер уже забронирован на это время"})
+//		return
+//	}
+//
+//	// Создаем бронирование
+//	endTime := booking.StartTime.Add(time.Duration(booking.Hours) * time.Hour)
+//	totalPrice := club.PricePerHour * float64(booking.Hours)
+//
+//	newBooking := Booking{
+//		ID:         generateNewID(), // Заменили firestore.NewDocID().ID на собственную функцию
+//		ClubID:     booking.ClubID,  // Исправлено CLU на ClubID
+//		UserID:     uid,
+//		PCNumber:   booking.PCNumber,  // Исправлено PCM на PCNumber
+//		StartTime:  booking.StartTime, // Исправлено Sta на StartTime
+//		EndTime:    endTime,
+//		TotalPrice: totalPrice,
+//		Status:     "active",
+//		CreatedAt:  time.Now(),
+//	}
+//
+//	_, err = client.Collection("bookings").Doc(newBooking.ID).Set(context.Background(), newBooking)
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+//		return
+//	}
+//
+//	// Обновляем статус компьютера
+//	_, err = client.Collection("computers").Doc(computer.ID).Update(context.Background(), []firestore.Update{
+//		{Path: "IsAvailable", Value: false},
+//	})
+//
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+//		return
+//	}
+//
+//	c.JSON(http.StatusCreated, newBooking)
+//}
+
+func CreateBooking(c *gin.Context) {
 	uid := c.MustGet("uid").(string)
 
 	var booking struct {
-		ClubID    string    `json:"ClubID"`
-		PCNumber  int       `json:"Number"`
-		StartTime time.Time `json:"start_time"`
-		Hours     int       `json:"hours"`
+		ClubID    string    `json:"ClubID"`    // Соответствует полю ClubID в Firestore
+		PCNumber  int       `json:"PCNumber"`  // Номер компьютера
+		StartTime time.Time `json:"StartTime"` // Время начала
+		Hours     int       `json:"Hours"`     // Количество часов
 	}
 
 	if err := c.ShouldBindJSON(&booking); err != nil {
@@ -59,50 +169,67 @@ func createBooking(c *gin.Context) {
 	}
 
 	// Получаем информацию о клубе
-	clubDoc, err := client.Collection("clubs").Doc(booking.ClubID).Get(context.Background())
+	clubDoc, err := client.Collection("clubs").Where("ClubID", "==", booking.ClubID).Limit(1).Documents(context.Background()).Next()
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Клуб не найден"})
 		return
 	}
 
-	var club ComputerClub
-	clubDoc.DataTo(&club)
+	var club struct {
+		Address      string  `firestore:"Address"`
+		AvailablePCs int     `firestore:"AvailablePCs"`
+		ClubID       string  `firestore:"ClubID"`
+		ID           string  `firestore:"ID"`
+		Name         string  `firestore:"Name"`
+		PricePerHour float64 `firestore:"PricePerHour"`
+	}
+
+	if err := clubDoc.DataTo(&club); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	// Проверяем доступность компьютера
-	computerDocs, err := client.Collection("computers").
+	computerDoc, err := client.Collection("computers").
 		Where("ClubID", "==", booking.ClubID).
-		Where("Number", "==", booking.PCNumber).
+		Where("PCNumber", "==", booking.PCNumber).
 		Limit(1).
 		Documents(context.Background()).
-		GetAll()
+		Next()
 
-	if err != nil || len(computerDocs) == 0 {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Компьютер не найден"})
 		return
 	}
 
-	var computer Computer
-	computerDocs[0].DataTo(&computer)
+	var computer struct {
+		IsAvailable bool `firestore:"IsAvailable"`
+	}
+
+	if err := computerDoc.DataTo(&computer); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	if !computer.IsAvailable {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Компьютер уже занят"})
 		return
 	}
 
-	// Проверяем нет ли пересечений по времени
+	// Проверяем пересечения по времени
 	bookingsQuery := client.Collection("bookings").
 		Where("ClubID", "==", booking.ClubID).
-		Where("Number", "==", booking.PCNumber).
-		Where("status", "==", "active").
-		Where("end_time", ">", time.Now())
+		Where("PCNumber", "==", booking.PCNumber).
+		Where("Status", "==", "active").
+		Where("EndTime", ">", time.Now())
 
-	existingBookings, err := bookingsQuery.Documents(context.Background()).GetAll()
+	existing, err := bookingsQuery.Documents(context.Background()).GetAll()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if len(existingBookings) > 0 {
+	if len(existing) > 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Компьютер уже забронирован на это время"})
 		return
 	}
@@ -111,26 +238,26 @@ func createBooking(c *gin.Context) {
 	endTime := booking.StartTime.Add(time.Duration(booking.Hours) * time.Hour)
 	totalPrice := club.PricePerHour * float64(booking.Hours)
 
-	newBooking := Booking{
-		ID:         generateNewID(), // Заменили firestore.NewDocID().ID на собственную функцию
-		ClubID:     booking.ClubID,  // Исправлено CLU на ClubID
-		UserID:     uid,
-		PCNumber:   booking.PCNumber,  // Исправлено PCM на PCNumber
-		StartTime:  booking.StartTime, // Исправлено Sta на StartTime
-		EndTime:    endTime,
-		TotalPrice: totalPrice,
-		Status:     "active",
-		CreatedAt:  time.Now(),
+	newBooking := map[string]interface{}{
+		"ID":         generateNewID(),
+		"ClubID":     booking.ClubID,
+		"UserID":     uid,
+		"PCNumber":   booking.PCNumber,
+		"StartTime":  booking.StartTime,
+		"EndTime":    endTime,
+		"TotalPrice": totalPrice,
+		"Status":     "active",
+		"CreatedAt":  time.Now(),
 	}
 
-	_, err = client.Collection("bookings").Doc(newBooking.ID).Set(context.Background(), newBooking)
+	_, err = client.Collection("bookings").Doc(newBooking["ID"].(string)).Set(context.Background(), newBooking)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Обновляем статус компьютера
-	_, err = client.Collection("computers").Doc(computer.ID).Update(context.Background(), []firestore.Update{
+	_, err = computerDoc.Ref.Update(context.Background(), []firestore.Update{
 		{Path: "IsAvailable", Value: false},
 	})
 
@@ -143,10 +270,10 @@ func createBooking(c *gin.Context) {
 }
 
 // handlers.go
-func createComputerList(c *gin.Context) {
+func CreateComputerList(c *gin.Context) {
 	clubID := c.Param("clubId")
 
-	var computers []Computer
+	var computers []models.Computer
 	if err := c.ShouldBindJSON(&computers); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -176,7 +303,7 @@ func createComputerList(c *gin.Context) {
 }
 
 // handlers.go
-func getUserBookings(c *gin.Context) {
+func GetUserBookings(c *gin.Context) {
 	uid := c.MustGet("uid").(string)
 
 	// Получаем активные бронирования пользователя
@@ -193,16 +320,16 @@ func getUserBookings(c *gin.Context) {
 		return
 	}
 
-	var bookings []Booking
+	var bookings []models.Booking
 	for _, doc := range docs {
-		var booking Booking
+		var booking models.Booking
 		doc.DataTo(&booking)
 		booking.ID = doc.Ref.ID
 
 		// Получаем информацию о клубе
 		clubDoc, err := client.Collection("clubs").Doc(booking.ClubID).Get(context.Background())
 		if err == nil {
-			var club ComputerClub
+			var club models.ComputerClub
 			clubDoc.DataTo(&club)
 			booking.ClubName = club.Name // Добавляем имя клуба в ответ
 		}
@@ -214,7 +341,7 @@ func getUserBookings(c *gin.Context) {
 }
 
 // handlers.go
-func cancelBooking(c *gin.Context) {
+func CancelBooking(c *gin.Context) {
 	uid := c.MustGet("uid").(string)
 	bookingID := c.Param("id")
 
@@ -226,7 +353,7 @@ func cancelBooking(c *gin.Context) {
 		return
 	}
 
-	var booking Booking
+	var booking models.Booking
 	bookingDoc.DataTo(&booking)
 
 	// Проверяем, что бронирование принадлежит пользователю
@@ -317,8 +444,8 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 // Получение всех клубов
-func getAllClubs(c *gin.Context) {
-	var clubs []ComputerClub
+func GetAllClubs(c *gin.Context) {
+	var clubs []models.ComputerClub
 	docs, err := client.Collection("clubs").Documents(context.Background()).GetAll()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -326,7 +453,7 @@ func getAllClubs(c *gin.Context) {
 	}
 
 	for _, doc := range docs {
-		var club ComputerClub
+		var club models.ComputerClub
 		doc.DataTo(&club)
 		club.ID = doc.Ref.ID
 		clubs = append(clubs, club)
@@ -335,8 +462,8 @@ func getAllClubs(c *gin.Context) {
 	c.JSON(http.StatusOK, clubs)
 }
 
-func getAllComputers(c *gin.Context) {
-	var comps []Computer
+func GetAllComputers(c *gin.Context) {
+	var comps []models.Computer
 	docs, err := client.Collection("computers").Documents(context.Background()).GetAll()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -344,7 +471,7 @@ func getAllComputers(c *gin.Context) {
 	}
 
 	for _, doc := range docs {
-		var comp Computer
+		var comp models.Computer
 		doc.DataTo(&comp)
 		comp.ID = doc.Ref.ID
 		comps = append(comps, comp)
@@ -354,7 +481,7 @@ func getAllComputers(c *gin.Context) {
 }
 
 // Получение клуба по ID
-func getClubByID(c *gin.Context) {
+func GetClubByID(c *gin.Context) {
 	id := c.Param("id")
 	doc, err := client.Collection("clubs").Doc(id).Get(context.Background())
 	if err != nil {
@@ -362,15 +489,15 @@ func getClubByID(c *gin.Context) {
 		return
 	}
 
-	var club ComputerClub
+	var club models.ComputerClub
 	doc.DataTo(&club)
 	club.ID = doc.Ref.ID
 	c.JSON(http.StatusOK, club)
 }
 
 // Создание клуба (требует аутентификации)
-func createClub(c *gin.Context) {
-	var club ComputerClub
+func CreateClub(c *gin.Context) {
+	var club models.ComputerClub
 	if err := c.ShouldBindJSON(&club); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -391,9 +518,9 @@ func createClub(c *gin.Context) {
 }
 
 // Обновление клуба (требует аутентификации)
-func updateClub(c *gin.Context) {
+func UpdateClub(c *gin.Context) {
 	id := c.Param("id")
-	var club ComputerClub
+	var club models.ComputerClub
 	if err := c.ShouldBindJSON(&club); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -409,7 +536,7 @@ func updateClub(c *gin.Context) {
 }
 
 // Удаление клуба (требует аутентификации)
-func deleteClub(c *gin.Context) {
+func DeleteClub(c *gin.Context) {
 	id := c.Param("id")
 	_, err := client.Collection("clubs").Doc(id).Delete(context.Background())
 	if err != nil {
@@ -421,7 +548,7 @@ func deleteClub(c *gin.Context) {
 }
 
 // Авторизация пользователя
-func authHandler(c *gin.Context) {
+func AuthHandler(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "No Authorization header"})
