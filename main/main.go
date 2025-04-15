@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"log"
-	"main/internal/deliveries/handlers"
+	"main/handlers"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -21,7 +21,7 @@ var firebaseAuth *auth.Client
 // Инициализация Firestore и Firebase Auth
 func initFirestore() {
 	ctx := context.Background()
-	opt := option.WithCredentialsFile("../../configs/firebase.json")
+	opt := option.WithCredentialsFile("firebase.json")
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
 		log.Fatalf("Ошибка подключения к Firebase: %v", err)
@@ -56,7 +56,7 @@ func main() {
 	// Открытые маршруты
 	r.GET("/clubs", handlers.GetAllClubs)
 	r.GET("/clubs/:id", handlers.GetClubByID)
-	r.POST("/auth", handlers.AuthHandler)
+	r.POST("/auth_handle", handlers.AuthHandler)
 	r.GET("/computers", handlers.GetAllComputers)
 
 	// Защищенные маршруты (только проверка аутентификации)
