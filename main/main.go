@@ -105,6 +105,7 @@ func main() {
 	computerService := services.NewComputerService(computerRepo, clubRepo)
 
 	// Инициализация обработчиков
+	// Обновляем вызов NewHandler, так как он больше не возвращает ошибку
 	handler := handlers.NewHandler(clubService, bookingService, computerService, firebaseAuth)
 
 	// Настройка маршрутов

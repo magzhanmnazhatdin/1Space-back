@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"main/models"
@@ -9,16 +10,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"firebase.google.com/go/v4/auth" // Импортируем для работы с Firebase Auth
 )
 
 type Handler struct {
 	clubService     services.ClubService
 	bookingService  services.BookingService
 	computerService services.ComputerService
-	authClient      interface{} // firebase.auth.Client не импортируется для примера
+	authClient      *auth.Client // Типизируем как *auth.Client
 }
 
-func NewHandler(clubService services.ClubService, bookingService services.BookingService, computerService services.ComputerService, authClient interface{}) *Handler {
+func NewHandler(clubService services.ClubService, bookingService services.BookingService, computerService services.ComputerService, authClient *auth.Client) *Handler {
 	return &Handler{
 		clubService:     clubService,
 		bookingService:  bookingService,
@@ -226,6 +229,50 @@ func (h *Handler) CreateComputerList(c *gin.Context) {
 }
 
 func (h *Handler) AuthHandler(c *gin.Context) {
-	// Реализация зависит от firebase.auth.Client, оставлено как placeholder
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Auth handler not implemented"})
+	// Извлекаем токен из заголовка Authorization
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		log.Printf("AuthHandler: Authorization header is missing")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
+		return
+	}
+
+	// Проверяем, что заголовок имеет формат "Bearer <token>"
+	const bearerPrefix = "Bearer "
+	if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
+		log.Printf("AuthHandler: Invalid Authorization header format: %s", authHeader)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
+		return
+	}
+
+	// Извлекаем сам токен
+	token := authHeader[len(bearerPrefix):]
+	if token == "" {
+		log.Printf("AuthHandler: Token is empty")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token is required"})
+		return
+	}
+
+	// Проверяем токен с помощью Firebase Admin SDK
+	ctx := c.Request.Context()
+	decodedToken, err := h.authClient.VerifyIDToken(ctx, token)
+	if err != nil {
+		log.Printf("AuthHandler: Token verification failed: %v", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token: " + err.Error()})
+		return
+	}
+
+	// Токен валиден, извлекаем uid
+	uid := decodedToken.UID
+	if uid == "" {
+		log.Printf("AuthHandler: UID extraction failed: %v", decodedToken)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract UID from token"})
+		return
+	}
+
+	// Логируем успешную аутентификацию
+	log.Printf("AuthHandler: User authenticated: %s", uid)
+
+	// Возвращаем uid в ответе
+	c.JSON(http.StatusOK, gin.H{"uid": uid})
 }

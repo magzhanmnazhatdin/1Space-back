@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"log"
 	"main/models"
 
 	"cloud.google.com/go/firestore"
@@ -72,23 +71,31 @@ func (r *clubRepository) CreateClub(ctx context.Context, club *models.ComputerCl
 }
 
 func (r *clubRepository) UpdateClub(ctx context.Context, id string, club *models.ComputerClub) error {
-	if id == "" {
-		return status.Error(codes.InvalidArgument, "Club ID is required")
+	updates := []firestore.Update{}
+	if club.Name != "" {
+		updates = append(updates, firestore.Update{Path: "name", Value: club.Name})
 	}
-	if club == nil {
-		return status.Error(codes.InvalidArgument, "Club data is required")
+	if club.Address != "" {
+		updates = append(updates, firestore.Update{Path: "address", Value: club.Address})
+	}
+	if club.PricePerHour > 0 {
+		updates = append(updates, firestore.Update{Path: "price_per_hour", Value: club.PricePerHour})
+	}
+	if club.AvailablePCs >= 0 {
+		updates = append(updates, firestore.Update{Path: "available_pcs", Value: club.AvailablePCs})
 	}
 
-	log.Printf("Updating club with ID %s: %+v", id, club)
-	_, err := r.client.Collection("clubs").Doc(id).Set(ctx, club)
+	if len(updates) == 0 {
+		return status.Error(codes.InvalidArgument, "No fields to update")
+	}
+
+	_, err := r.client.Collection("clubs").Doc(id).Update(ctx, updates)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			return status.Error(codes.NotFound, "Club not found")
 		}
-		log.Printf("Failed to update club with ID %s: %v", id, err)
 		return err
 	}
-
 	return nil
 }
 
