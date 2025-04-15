@@ -18,8 +18,9 @@ const CLUBID string = "ClubID"
 var client *firestore.Client
 var FirebaseAuth *auth.Client
 
-func Init(fsClient *firestore.Client) {
+func Init(fsClient *firestore.Client, authClient *auth.Client) {
 	client = fsClient
+	FirebaseAuth = authClient
 }
 
 func generateNewID() string {
@@ -128,6 +129,12 @@ func AuthHandler(c *gin.Context) {
 // Middleware для проверки аутентификации (без проверки роли)
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if FirebaseAuth == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication service not initialized"})
+			c.Abort()
+			return
+		}
+		
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "No Authorization header"})

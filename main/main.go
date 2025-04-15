@@ -51,7 +51,7 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	handlers.Init(client)
+	handlers.Init(client, firebaseAuth)
 
 	// Открытые маршруты
 	r.GET("/clubs", handlers.GetAllClubs)
