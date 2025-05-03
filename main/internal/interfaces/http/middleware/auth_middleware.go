@@ -1,25 +1,46 @@
 package middleware
 
 import (
+	"context"
+	"net/http"
+	"strings"
+
 	"firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
+// AuthMiddleware returns a Gin middleware that verifies Firebase ID tokens.
 func AuthMiddleware(authClient *auth.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		idToken := c.GetHeader("Authorization")
-		if idToken == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "no token"})
+		if authClient == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication service not initialized"})
+			c.Abort()
 			return
 		}
-		token, err := authClient.VerifyIDToken(c.Request.Context(), idToken)
+
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "No Authorization header"})
+			c.Abort()
+			return
+		}
+
+		token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header"})
+			c.Abort()
+			return
+		}
+
+		decodedToken, err := authClient.VerifyIDToken(context.Background(), token)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.Abort()
 			return
 		}
-		// прокинуть UID дальше
-		c.Request.Header.Set("X-User-ID", token.UID)
+
+		// store user's UID in context for downstream handlers
+		c.Set("uid", decodedToken.UID)
 		c.Next()
 	}
 }
