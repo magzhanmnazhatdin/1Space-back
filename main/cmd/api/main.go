@@ -15,7 +15,7 @@ import (
 
 func main() {
 	// Initialize Firebase App
-	opt := option.WithCredentialsFile("/root/creds.json")
+	opt := option.WithCredentialsFile("/main/firebase.json")
 	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		log.Fatalf("error initializing firebase: %v", err)

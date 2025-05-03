@@ -15,7 +15,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/api
 
 # ─── Final stage ──────────────────────────────────────────────────────────────
 FROM alpine:latest
-WORKDIR /root/
+WORKDIR /main/
 
 # Копируем бинарник из билдера
 COPY --from=builder /app/main .

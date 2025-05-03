@@ -6,7 +6,7 @@ services:
       - "8080:8080"
     environment:
       # Пусть приложение найдёт файл с ключом
-      - GOOGLE_APPLICATION_CREDENTIALS=/root/creds.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/main/firebase.json
     volumes:
       # Привяжем ваш локальный файл с JSON-ключом
-      - ./firebase.json:/root/creds.json:ro
+      - ./firebase.json:/main/firebase.json:ro
