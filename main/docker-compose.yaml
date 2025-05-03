@@ -1,42 +1,12 @@
-version: '3.8'
-
 services:
   app:
     build: .
+    container_name: 1Space
     ports:
       - "8080:8080"
     environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=appdb
-    depends_on:
-      - db
-    networks:
-      - app-network
-
-  db:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=appdb
+      # Пусть приложение найдёт файл с ключом
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/creds.json
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres", "http://localhost"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres-data:
-
-networks:
-  app-network:
-    driver: bridge
+      # Привяжем ваш локальный файл с JSON-ключом
+      - ./firebase.json:/root/creds.json:ro
