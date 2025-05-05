@@ -1,0 +1,89 @@
+@startuml
+' Пакет domain.entities
+package "domain.entities" {
+  class Club {
+    +ID: string
+    +Name: string
+    +Address: string
+    +PricePerHour: float64
+    +AvailablePCs: int
+  }
+  class Computer {
+    +ID: string
+    +ClubID: string
+    +PCNumber: int
+    +Description: string
+    +IsAvailable: bool
+  }
+  class Booking {
+    +ID: string
+    +ClubID: string
+    +UserID: string
+    +PCNumber: int
+    +StartTime: time.Time
+    +EndTime: time.Time
+    +TotalPrice: float64
+    +Status: string
+    +CreatedAt: time.Time
+  }
+}
+
+' Пакет domain.repository
+package "domain.repository" {
+  interface ClubRepository
+  interface ComputerRepository
+  interface BookingRepository
+}
+
+' Пакет application.usecase
+package "application.usecase" {
+  interface ClubUseCase
+  class clubInteractor
+  interface ComputerUseCase
+  class computerInteractor
+  interface BookingUseCase
+  class bookingInteractor
+}
+
+' Пакет infrastructure.firestore
+package "infrastructure.firestore" {
+  class clubRepoFS
+  class computerRepoFS
+  class bookingRepoFS
+}
+
+' Пакет interfaces.http.handler
+package "interfaces.http.handler" {
+  class ClubHandler
+  class ComputerHandler
+  class BookingHandler
+  class AuthHandler
+}
+
+' Пакет interfaces.http.middleware
+package "interfaces.http.middleware" {
+  class AuthMiddleware
+}
+
+' Отношения
+ClubRepository <|.. clubRepoFS
+ComputerRepository <|.. computerRepoFS
+BookingRepository <|.. bookingRepoFS
+
+ClubUseCase <|.. clubInteractor
+ComputerUseCase <|.. computerInteractor
+BookingUseCase <|.. bookingInteractor
+
+clubInteractor --> ClubRepository : uses
+computerInteractor --> ComputerRepository : uses
+bookingInteractor --> BookingRepository : uses
+
+ClubHandler --> ClubUseCase : injects
+ComputerHandler --> ComputerUseCase : injects
+BookingHandler --> BookingUseCase : injects
+AuthHandler --> auth.Client : injects
+
+AuthMiddleware --> auth.Client : uses
+AuthMiddleware --> gin.Context : intercepts
+
+@enduml
