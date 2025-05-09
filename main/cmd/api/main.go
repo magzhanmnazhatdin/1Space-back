@@ -42,15 +42,17 @@ func main() {
 	// Use Cases
 	clubUC := usecase.NewClubUseCase(clubRepo)
 	compUC := usecase.NewComputerUseCase(compRepo)
-	bookUC := usecase.NewBookingUseCase(bookRepo)
+	bookUC := usecase.NewBookingUseCase(bookRepo, compRepo)
+	paymentUC := usecase.NewPaymentUseCase()
 
 	// Handlers
 	clubH := handler.NewClubHandler(clubUC)
 	compH := handler.NewComputerHandler(compUC)
-	bookH := handler.NewBookingHandler(bookUC)
+	bookH := handler.NewBookingHandler(bookUC, clubUC)
 	authH := handler.NewAuthHandler(authClient)
+	paymentH := handler.NewPaymentHandler(paymentUC)
 
 	// Router setup
-	router := http.NewRouter(clubH, compH, bookH, authH, authClient)
+	router := http.NewRouter(clubH, compH, bookH, authH, paymentH, authClient)
 	log.Fatal(router.Run(":8080"))
 }

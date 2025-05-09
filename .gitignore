@@ -26,6 +26,7 @@ go.work.sum
 
 *.json
 !firebase-config.json  # (optional: allow a safe config file)
+main/config.yml
 
 .idea/
 *.exe
