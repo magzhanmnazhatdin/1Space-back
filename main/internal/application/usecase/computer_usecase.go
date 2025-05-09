@@ -1,3 +1,4 @@
+// internal/application/usecase/computer_usecase.go
 package usecase
 
 import (
@@ -6,18 +7,19 @@ import (
 	"main/internal/domain/repository"
 )
 
-// ComputerUseCase defines business logic for Computer.
 type ComputerUseCase interface {
 	GetAll(ctx context.Context) ([]*entities.Computer, error)
 	GetByClub(ctx context.Context, clubID string) ([]*entities.Computer, error)
+	GetByID(ctx context.Context, id string) (*entities.Computer, error) // ← new
 	Create(ctx context.Context, comp *entities.Computer) error
+	Update(ctx context.Context, comp *entities.Computer) error // ← new
+	Delete(ctx context.Context, id string) error               // ← new
 }
 
 type computerInteractor struct {
 	repo repository.ComputerRepository
 }
 
-// NewComputerUseCase constructs a new ComputerUseCase with the given repository.
 func NewComputerUseCase(r repository.ComputerRepository) ComputerUseCase {
 	return &computerInteractor{repo: r}
 }
@@ -30,6 +32,18 @@ func (u *computerInteractor) GetByClub(ctx context.Context, clubID string) ([]*e
 	return u.repo.FindByClub(ctx, clubID)
 }
 
+func (u *computerInteractor) GetByID(ctx context.Context, id string) (*entities.Computer, error) {
+	return u.repo.FindByID(ctx, id)
+}
+
 func (u *computerInteractor) Create(ctx context.Context, comp *entities.Computer) error {
 	return u.repo.Create(ctx, comp)
+}
+
+func (u *computerInteractor) Update(ctx context.Context, comp *entities.Computer) error {
+	return u.repo.Update(ctx, comp)
+}
+
+func (u *computerInteractor) Delete(ctx context.Context, id string) error {
+	return u.repo.Delete(ctx, id)
 }

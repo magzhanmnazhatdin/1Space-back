@@ -39,8 +39,14 @@ func AuthMiddleware(authClient *auth.Client) gin.HandlerFunc {
 			return
 		}
 
+		role, ok := decodedToken.Claims["role"].(string)
+		if !ok || role == "" {
+			role = "user" // по умолчанию
+		}
+
 		// store user's UID in context for downstream handlers
 		c.Set("uid", decodedToken.UID)
+		c.Set("role", role)
 		c.Next()
 	}
 }

@@ -7,4 +7,5 @@ type Club struct {
 	Address      string  `firestore:"address"        json:"address"`
 	PricePerHour float64 `firestore:"price_per_hour" json:"price_per_hour"`
 	AvailablePCs int     `firestore:"available_pcs"  json:"available_pcs"`
+	ManagerID    string  `firestore:"manager_id"     json:"manager_id"`
 }

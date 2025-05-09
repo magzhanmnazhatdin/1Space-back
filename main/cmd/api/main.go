@@ -47,12 +47,13 @@ func main() {
 
 	// Handlers
 	clubH := handler.NewClubHandler(clubUC)
-	compH := handler.NewComputerHandler(compUC)
+	compH := handler.NewComputerHandler(compUC, clubUC)
 	bookH := handler.NewBookingHandler(bookUC, clubUC)
 	authH := handler.NewAuthHandler(authClient)
 	paymentH := handler.NewPaymentHandler(paymentUC)
+	userH := handler.NewUserHandler(authClient)
 
 	// Router setup
-	router := http.NewRouter(clubH, compH, bookH, authH, paymentH, authClient)
+	router := http.NewRouter(clubH, compH, bookH, authH, paymentH, userH, authClient)
 	log.Fatal(router.Run(":8080"))
 }
