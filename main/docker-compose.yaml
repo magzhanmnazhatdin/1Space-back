@@ -4,9 +4,24 @@ services:
     container_name: 1Space
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
-      # Пусть приложение найдёт файл с ключом
       - GOOGLE_APPLICATION_CREDENTIALS=/main/firebase.json
     volumes:
-      # Привяжем ваш локальный файл с JSON-ключом
       - ./firebase.json:/main/firebase.json:ro
+      - ./config.yml:/main/config.yml:ro   # ← монтируем ваш файл конфигурации
+    depends_on:
+      - stripe
+
+  stripe:
+    image: stripe/stripe-cli:latest
+    container_name: stripe_cli
+    command: listen --forward-to http://app:8080/webhook
+    env_file:
+      - .env
+    volumes:
+      - stripe_config:/home/stripe/.config/stripe
+
+volumes:
+  stripe_config:
