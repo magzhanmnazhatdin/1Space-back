@@ -1,42 +1,27 @@
-version: '3.8'
-
 services:
   app:
     build: .
+    container_name: 1Space
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=appdb
-    depends_on:
-      - db
-    networks:
-      - app-network
-
-  db:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=appdb
+      - GOOGLE_APPLICATION_CREDENTIALS=/main/firebase.json
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres", "http://localhost"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - ./firebase.json:/main/firebase.json:ro
+      - ./config.yml:/main/config.yml:ro   # ← монтируем ваш файл конфигурации
+    depends_on:
+      - stripe
+
+  stripe:
+    image: stripe/stripe-cli:latest
+    container_name: stripe_cli
+    command: listen --forward-to http://app:8080/webhook
+    env_file:
+      - .env
+    volumes:
+      - stripe_config:/home/stripe/.config/stripe
 
 volumes:
-  postgres-data:
-
-networks:
-  app-network:
-    driver: bridge
+  stripe_config:

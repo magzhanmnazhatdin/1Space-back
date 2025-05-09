@@ -1,0 +1,23 @@
+@startuml
+actor Client
+participant "Gin Router" as Router
+participant "Auth\nMiddleware" as AuthMW
+participant "Booking\nHandler" as BHandler
+participant "Booking\nUseCase" as BUseCase
+participant "Booking\nRepository" as BRepo
+database Firestore
+
+Client -> Router: POST /bookings\n(Authorization: Bearer <ID-token>, JSON body)
+Router -> AuthMW: Invoke AuthMiddleware
+AuthMW -> FirebaseAuth: VerifyIDToken(token)
+FirebaseAuth --> AuthMW: decodedToken (UID)
+AuthMW -> Router: c.Set("uid", UID)\nContinue
+Router -> BHandler: BookingHandler.CreateBooking(c)
+BHandler -> BUseCase: Create(ctx, BookingDTO)
+BUseCase -> BRepo: Create(ctx, BookingEntity)
+BRepo -> Firestore: Set document in "bookings" collection
+Firestore --> BRepo: OK
+BRepo --> BUseCase: nil (no error)
+BUseCase --> BHandler: nil (success)
+BHandler --> Client: HTTP 201 Created\n{returned Booking JSON}
+@enduml
