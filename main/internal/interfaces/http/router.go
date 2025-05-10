@@ -15,6 +15,7 @@ func NewRouter(
 	bookH *handler.BookingHandler,
 	authH *handler.AuthHandler,
 	paymentH *handler.PaymentHandler,
+	userH *handler.UserHandler,
 	authClient *auth.Client,
 ) *gin.Engine {
 	// load config
@@ -35,17 +36,39 @@ func NewRouter(
 	r.POST("/webhook", paymentH.Webhook)
 
 	// Protected routes
-	protected := r.Group("/", middleware.AuthMiddleware(authClient))
+	protected := r.Group("/",
+		middleware.AuthMiddleware(authClient),
+		middleware.RequireRole("user", "manager", "admin"))
 	{
-		protected.POST("/clubs", clubH.CreateClub)
-		protected.PUT("/clubs/:id", clubH.UpdateClub)
-		protected.DELETE("/clubs/:id", clubH.DeleteClub)
-
 		protected.GET("/bookings", bookH.GetUserBookings)
 		protected.POST("/bookings", bookH.CreateBooking)
 		protected.PUT("/bookings/:id/cancel", bookH.CancelBooking)
-
-		protected.POST("/clubs/:id/computers", compH.CreateComputerList)
 	}
+
+	// маршруты для менеджеров (manager + admin)
+	manager := r.Group("/manager",
+		middleware.AuthMiddleware(authClient),
+		middleware.RequireRole("manager", "admin"),
+	)
+	{
+		manager.POST("/clubs", clubH.CreateClub)
+		manager.PUT("/clubs/:id", clubH.UpdateClub)
+		manager.DELETE("/clubs/:id", clubH.DeleteClub)
+		manager.POST("/clubs/:id/computers", compH.CreateComputerList)
+		manager.PUT("/computers/:id", compH.UpdateComputer)
+		manager.DELETE("/computers/:id", compH.DeleteComputer)
+	}
+
+	// маршруты для админов (только admin)
+	admin := r.Group("/admin",
+		middleware.AuthMiddleware(authClient),
+		middleware.RequireRole("admin"),
+	)
+	{
+		// управление пользователями, в т.ч. смена роли
+		admin.PUT("/users/:id/role", userH.ChangeRole)
+		// сюда можно добавить ещё endpoints для админа
+	}
+
 	return r
 }

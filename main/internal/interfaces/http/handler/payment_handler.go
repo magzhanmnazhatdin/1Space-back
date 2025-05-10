@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"main/internal/config"
 	"net/http"
 
@@ -46,11 +47,13 @@ func (h *PaymentHandler) Webhook(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid signature"})
 		return
 	}
+
 	switch event.Type {
 	case "payment_intent.succeeded":
-		// handle success
+		log.Println("Payment succeeded:", event.ID)
 	case "payment_intent.payment_failed":
-		// handle failure
+		log.Println("Payment failed:", event.ID)
 	}
+
 	c.Status(http.StatusOK)
 }

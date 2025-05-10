@@ -1,0 +1,9 @@
+server:
+  port: 8080
+
+firebase:
+  credentials_file: "firebase.json"
+
+stripeclient:
+  secret_key: "test-key"
+  webhook_secret: "test-webhook"

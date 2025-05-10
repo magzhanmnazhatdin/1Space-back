@@ -70,3 +70,8 @@ func (r *computerRepoFS) Update(ctx context.Context, c *entities.Computer) error
 	_, err := r.client.Collection("computers").Doc(c.ID).Set(ctx, c)
 	return err
 }
+
+func (r *computerRepoFS) Delete(ctx context.Context, id string) error {
+	_, err := r.client.Collection("computers").Doc(id).Delete(ctx)
+	return err
+}

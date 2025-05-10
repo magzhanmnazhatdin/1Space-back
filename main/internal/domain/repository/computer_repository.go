@@ -12,4 +12,5 @@ type ComputerRepository interface {
 	FindByClub(ctx context.Context, clubID string) ([]*entities.Computer, error)
 	Create(ctx context.Context, comp *entities.Computer) error
 	Update(ctx context.Context, comp *entities.Computer) error
+	Delete(ctx context.Context, id string) error
 }
