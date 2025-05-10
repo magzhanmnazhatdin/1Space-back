@@ -24,13 +24,23 @@ func TestGetUserBookings(t *testing.T) {
 	bookings := []*entities.Booking{{ID: "1"}, {ID: "2"}}
 	mockUC.On("GetByUser", mock.Anything, "user123").Return(bookings, nil)
 
+	// создаём контекст и мокаем http.Request
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("GET", "/bookings", nil)
+	c.Request = req
+
 	c.Set("uid", "user123")
 
 	h.GetUserBookings(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+
+	// проверим, что вернулись данные
+	var result []entities.Booking
+	err := json.Unmarshal(w.Body.Bytes(), &result)
+	assert.NoError(t, err)
+	assert.Len(t, result, 2)
 }
 
 func TestCreateBooking_Success(t *testing.T) {
@@ -62,16 +72,20 @@ func TestCreateBooking_Success(t *testing.T) {
 }
 
 func TestCancelBooking_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
 	mockUC := new(mocks.MockBookingUC)
 	h := handler.NewBookingHandler(mockUC, nil)
 
-	mockUC.On("Cancel", mock.Anything, "booking123").Return(nil)
+	mockUC.On("Cancel", mock.Anything, "booking123").Return(nil).Once()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("PUT", "/bookings/booking123/cancel", nil)
+	c.Request = req
 	c.Params = gin.Params{{Key: "id", Value: "booking123"}}
 
 	h.CancelBooking(c)
 
 	assert.Equal(t, http.StatusNoContent, w.Code)
+	mockUC.AssertExpectations(t)
 }

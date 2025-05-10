@@ -38,7 +38,7 @@ func NewRouter(
 	// Protected routes
 	protected := r.Group("/",
 		middleware.AuthMiddleware(authClient),
-		middleware.RequireRole("user"))
+		middleware.RequireRole("user", "manager", "admin"))
 	{
 		protected.GET("/bookings", bookH.GetUserBookings)
 		protected.POST("/bookings", bookH.CreateBooking)

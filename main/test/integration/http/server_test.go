@@ -3,6 +3,7 @@ package http_test
 import (
 	"bytes"
 	"encoding/json"
+	"main/internal/domain/entities"
 	interfaceHttp "main/internal/interfaces/http"
 	"main/internal/interfaces/http/handler"
 	"main/test/mocks"
@@ -12,20 +13,29 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func setupRouter() *gin.Engine {
 	clubUC := new(mocks.MockClubUC)
+	clubUC.On("GetAll", mock.Anything).Return([]*entities.Club{}, nil)
+	clubUC.On("GetByID", mock.Anything, "testclub").Return(&entities.Club{ID: "testclub", PricePerHour: 10}, nil)
 	clubH := handler.NewClubHandler(clubUC)
 
 	compUC := new(mocks.MockComputerUC)
 	compH := handler.NewComputerHandler(compUC, clubUC)
 
 	bookUC := new(mocks.MockBookingUC)
+	bookUC.On("Create", mock.Anything, mock.Anything).Return(nil)
 	bookH := handler.NewBookingHandler(bookUC, clubUC)
 
-	router := interfaceHttp.NewRouter(clubH, compH, bookH, nil, nil, nil, nil)
-	return router
+	// router без auth/payment/user
+	r := interfaceHttp.NewRouter(clubH, compH, bookH, nil, nil, nil, nil)
+
+	// заменим middleware на фейковый, всегда возвращающий 401
+	r.Use(mocks.FakeAuthMiddlewareAlways401())
+
+	return r
 }
 
 func TestPublicGetClubs(t *testing.T) {
@@ -35,11 +45,16 @@ func TestPublicGetClubs(t *testing.T) {
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
 
-	assert.True(t, resp.Code == http.StatusOK || resp.Code == http.StatusUnauthorized)
+	assert.Equal(t, http.StatusOK, resp.Code)
 }
 
 func TestProtectedPostBooking_Unauthorized(t *testing.T) {
-	router := setupRouter()
+	gin.SetMode(gin.TestMode)
+
+	router := gin.Default()
+	router.POST("/bookings", mocks.FakeAuthMiddlewareAlways401(), func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "should not reach"})
+	})
 
 	body := map[string]interface{}{
 		"club_id":    "testclub",

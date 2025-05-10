@@ -2,9 +2,9 @@ package handler_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
+	"github.com/stretchr/testify/mock"
 	"main/internal/domain/entities"
 	"main/internal/interfaces/http/handler"
 	"main/test/mocks"
@@ -22,14 +22,17 @@ func TestGetAllClubs(t *testing.T) {
 	h := handler.NewClubHandler(mockUC)
 
 	clubs := []*entities.Club{{ID: "1", Name: "Club1"}, {ID: "2", Name: "Club2"}}
-	mockUC.On("GetAll", context.Background()).Return(clubs, nil)
+	mockUC.On("GetAll", mock.Anything).Return(clubs, nil).Once()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("GET", "/clubs", nil)
+	c.Request = req
 
 	h.GetAllClubs(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	mockUC.AssertExpectations(t)
 }
 
 func TestGetClubByID_Success(t *testing.T) {
@@ -37,31 +40,40 @@ func TestGetClubByID_Success(t *testing.T) {
 	mockUC := new(mocks.MockClubUC)
 	h := handler.NewClubHandler(mockUC)
 
-	club := &entities.Club{ID: "123", Name: "Test Club"}
-	mockUC.On("GetByID", context.Background(), "123").Return(club, nil)
+	club := &entities.Club{ID: "1", Name: "Club1"}
+	mockUC.On("GetByID", mock.Anything, "1").Return(club, nil).Once()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Params = gin.Params{{Key: "id", Value: "123"}}
+	req, _ := http.NewRequest("GET", "/clubs/1", nil)
+	c.Request = req
+	c.Params = gin.Params{{Key: "id", Value: "1"}}
 
 	h.GetClubByID(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	mockUC.AssertExpectations(t)
 }
 
 func TestGetClubByID_NotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
 	mockUC := new(mocks.MockClubUC)
 	h := handler.NewClubHandler(mockUC)
 
-	mockUC.On("GetByID", context.Background(), "999").Return(nil, errors.New("not found"))
+	// возвращаем явный *entities.Club = nil, чтобы mock не падал
+	var nilClub *entities.Club = nil
+	mockUC.On("GetByID", mock.Anything, "999").Return(nilClub, errors.New("not found")).Once()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("GET", "/clubs/999", nil)
+	c.Request = req
 	c.Params = gin.Params{{Key: "id", Value: "999"}}
 
 	h.GetClubByID(c)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+	mockUC.AssertExpectations(t)
 }
 
 func TestCreateClub_InvalidRole(t *testing.T) {
@@ -84,19 +96,23 @@ func TestCreateClub_InvalidRole(t *testing.T) {
 }
 
 func TestDeleteClub_Success_Admin(t *testing.T) {
+	gin.SetMode(gin.TestMode)
 	mockUC := new(mocks.MockClubUC)
 	h := handler.NewClubHandler(mockUC)
 
-	mockUC.On("GetByID", context.Background(), "1").Return(&entities.Club{ID: "1", ManagerID: "manager1"}, nil)
-	mockUC.On("Delete", context.Background(), "1").Return(nil)
+	// для admin роли GetByID не вызываем, сразу Delete
+	mockUC.On("Delete", mock.Anything, "club123").Return(nil).Once()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Params = gin.Params{{Key: "id", Value: "1"}}
-	c.Set("uid", "admin1")
+	req, _ := http.NewRequest("DELETE", "/manager/clubs/club123", nil)
+	c.Request = req
+	c.Params = gin.Params{{Key: "id", Value: "club123"}}
+	c.Set("uid", "adminUser")
 	c.Set("role", "admin")
 
 	h.DeleteClub(c)
 
 	assert.Equal(t, http.StatusNoContent, w.Code)
+	mockUC.AssertExpectations(t)
 }
