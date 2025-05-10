@@ -1,4 +1,4 @@
-// internal/application/usecase/computer_usecase.go
+// internal/application/usecase_test/computer_usecase.go
 package usecase
 
 import (

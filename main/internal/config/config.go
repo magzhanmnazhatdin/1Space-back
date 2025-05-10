@@ -12,7 +12,7 @@ type ServerConfig struct {
 }
 
 type FirebaseConfig struct {
-	CredentialsFile string `mapstructure:"credentials_file"`
+	CredentialsFile string `mapstructure:"/main/firebase.json"`
 }
 
 type StripeConfig struct {

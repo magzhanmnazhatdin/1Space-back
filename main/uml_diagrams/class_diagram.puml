@@ -35,7 +35,7 @@ package "domain.repository" {
   interface BookingRepository
 }
 
-' Пакет application.usecase
+' Пакет application.usecase_test
 package "application.usecase" {
   interface ClubUseCase
   class clubInteractor
@@ -52,7 +52,7 @@ package "infrastructure.firestore" {
   class bookingRepoFS
 }
 
-' Пакет interfaces.http.handler
+' Пакет interfaces.http.handler_test
 package "interfaces.http.handler" {
   class ClubHandler
   class ComputerHandler

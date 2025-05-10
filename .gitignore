@@ -31,5 +31,4 @@ main/config.yml
 .idea/
 *.exe
 .vscode/
-mocks/
 vendor/
