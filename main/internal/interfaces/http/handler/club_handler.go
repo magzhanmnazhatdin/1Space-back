@@ -1,18 +1,17 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"main/internal/application/usecase"
 	"main/internal/domain/entities"
-	"net/http"
 )
 
-// ClubHandler handles HTTP requests for clubs.
 type ClubHandler struct {
 	uc usecase.ClubUseCase
 }
 
-// NewClubHandler creates a new ClubHandler with injected use case.
 func NewClubHandler(uc usecase.ClubUseCase) *ClubHandler {
 	return &ClubHandler{uc: uc}
 }
@@ -37,10 +36,8 @@ func (h *ClubHandler) GetClubByID(c *gin.Context) {
 }
 
 func (h *ClubHandler) CreateClub(c *gin.Context) {
-	uidIf, _ := c.Get("uid")
-	roleIf, _ := c.Get("role")
-	userID := uidIf.(string)
-	role := roleIf.(string)
+	uid := c.GetString("uid") // CHANGED: без проверки ролей
+	role := c.GetString("role")
 
 	var in entities.Club
 	if err := c.ShouldBindJSON(&in); err != nil {
@@ -49,21 +46,9 @@ func (h *ClubHandler) CreateClub(c *gin.Context) {
 	}
 
 	if role == "manager" {
-		// manager can only create club for себя
-		in.ManagerID = userID
-	} else if role == "admin" {
-		// admin должен указать manager_id в теле запроса
-		if in.ManagerID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "manager_id must be provided for admin",
-			})
-			return
-		}
-	} else {
-		// другие роли не могут создавать
-		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
-		return
+		in.ManagerID = uid // CHANGED: manager всегда свой
 	}
+	// admin берёт ManagerID из тела запроса
 
 	if err := h.uc.Create(c.Request.Context(), &in); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -73,25 +58,10 @@ func (h *ClubHandler) CreateClub(c *gin.Context) {
 }
 
 func (h *ClubHandler) UpdateClub(c *gin.Context) {
-	uidIf, _ := c.Get("uid")
-	userID := uidIf.(string)
-	roleIf, _ := c.Get("role")
-	role := roleIf.(string)
-
 	id := c.Param("id")
-	// if manager — проверяем, что именно его клуб
-	if role == "manager" {
-		club, err := h.uc.GetByID(c.Request.Context(), id)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-			return
-		}
-		if club.ManagerID != userID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
-			return
-		}
-	} else if role != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+	orig, err := h.uc.GetByID(c.Request.Context(), id) // CHANGED: сохраняем старый ManagerID
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
 
@@ -101,11 +71,7 @@ func (h *ClubHandler) UpdateClub(c *gin.Context) {
 		return
 	}
 	in.ID = id
-
-	if role == "manager" {
-		// сохранить прежнего менеджера
-		in.ManagerID = userID
-	}
+	in.ManagerID = orig.ManagerID // CHANGED: не даем менять владельца
 
 	if err := h.uc.Update(c.Request.Context(), &in); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -115,30 +81,10 @@ func (h *ClubHandler) UpdateClub(c *gin.Context) {
 }
 
 func (h *ClubHandler) DeleteClub(c *gin.Context) {
-	uidIf, _ := c.Get("uid")
-	roleIf, _ := c.Get("role")
-	userID := uidIf.(string)
-	role := roleIf.(string)
-
 	id := c.Param("id")
-	if role == "manager" {
-		club, err := h.uc.GetByID(c.Request.Context(), id)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-			return
-		}
-		if club.ManagerID != userID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
-			return
-		}
-	} else if role != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
-		return
-	}
-
 	if err := h.uc.Delete(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.AbortWithStatus(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }

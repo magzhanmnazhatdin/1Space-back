@@ -3,6 +3,7 @@ package http
 import (
 	"firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
+	"main/internal/application/usecase"
 	"main/internal/config"
 	"main/internal/infrastructure/stripeclient"
 	"main/internal/interfaces/http/handler"
@@ -17,6 +18,7 @@ func NewRouter(
 	paymentH *handler.PaymentHandler,
 	userH *handler.UserHandler,
 	authClient *auth.Client,
+	clubUC usecase.ClubUseCase,
 ) *gin.Engine {
 	// load config
 	config.Init()
@@ -52,9 +54,9 @@ func NewRouter(
 	)
 	{
 		manager.POST("/clubs", clubH.CreateClub)
-		manager.PUT("/clubs/:id", clubH.UpdateClub)
-		manager.DELETE("/clubs/:id", clubH.DeleteClub)
-		manager.POST("/clubs/:id/computers", compH.CreateComputerList)
+		manager.PUT("/clubs/:id", middleware.ManagerOwnsClub(clubUC), clubH.UpdateClub)
+		manager.DELETE("/clubs/:id", middleware.ManagerOwnsClub(clubUC), clubH.DeleteClub)
+		manager.POST("/clubs/:id/computers", middleware.ManagerOwnsClub(clubUC), compH.CreateComputerList)
 		manager.PUT("/computers/:id", compH.UpdateComputer)
 		manager.DELETE("/computers/:id", compH.DeleteComputer)
 	}
