@@ -36,25 +36,47 @@ func (h *ClubHandler) GetClubByID(c *gin.Context) {
 }
 
 func (h *ClubHandler) CreateClub(c *gin.Context) {
-	uid := c.GetString("uid") // CHANGED: без проверки ролей
+	uid := c.GetString("uid")
 	role := c.GetString("role")
 
-	var in entities.Club
-	if err := c.ShouldBindJSON(&in); err != nil {
+	var req struct {
+		Name         string  `json:"name" binding:"required"`
+		Address      string  `json:"address" binding:"required"`
+		PricePerHour float64 `json:"price_per_hour" binding:"required"`
+		ManagerID    string  `json:"manager_id,omitempty"` // теперь опционально
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if role == "manager" {
-		in.ManagerID = uid // CHANGED: manager всегда свой
+	club := entities.Club{
+		Name:         req.Name,
+		Address:      req.Address,
+		PricePerHour: req.PricePerHour,
 	}
-	// admin берёт ManagerID из тела запроса
 
-	if err := h.uc.Create(c.Request.Context(), &in); err != nil {
+	switch role {
+	case "manager":
+		club.ManagerID = uid
+
+	case "admin":
+		if req.ManagerID != "" {
+			club.ManagerID = req.ManagerID
+		} else {
+			club.ManagerID = uid
+		}
+
+	default:
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	if err := h.uc.Create(c.Request.Context(), &club); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, in)
+	c.JSON(http.StatusCreated, club)
 }
 
 func (h *ClubHandler) UpdateClub(c *gin.Context) {

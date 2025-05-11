@@ -41,7 +41,7 @@ func main() {
 	bookRepo := fsrepo.NewBookingRepoFS(fsClient)
 
 	// Use Cases
-	clubUC := usecase.NewClubUseCase(clubRepo)
+	clubUC := usecase.NewClubUseCase(clubRepo, compRepo)
 	compUC := usecase.NewComputerUseCase(compRepo)
 	bookUC := usecase.NewBookingUseCase(bookRepo, compRepo)
 	paymentUC := usecase.NewPaymentUseCase()
