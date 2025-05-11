@@ -27,7 +27,7 @@ func setupRouter() *gin.Engine {
 
 	bookUC := new(mocks.MockBookingUC)
 	bookUC.On("Create", mock.Anything, mock.Anything).Return(nil)
-	bookH := handler.NewBookingHandler(bookUC, clubUC)
+	bookH := handler.NewBookingHandler(bookUC, clubUC, nil)
 
 	// router без auth/payment/user
 	r := interfaceHttp.NewRouter(clubH, compH, bookH, nil, nil, nil, nil, nil, nil)

@@ -19,7 +19,7 @@ import (
 func TestGetUserBookings(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	mockUC := new(mocks.MockBookingUC)
-	h := handler.NewBookingHandler(mockUC, nil)
+	h := handler.NewBookingHandler(mockUC, nil, nil)
 
 	bookings := []*entities.Booking{{ID: "1"}, {ID: "2"}}
 	mockUC.On("GetByUser", mock.Anything, "user123").Return(bookings, nil)
@@ -46,7 +46,7 @@ func TestGetUserBookings(t *testing.T) {
 func TestCreateBooking_Success(t *testing.T) {
 	mockBooking := new(mocks.MockBookingUC)
 	mockClub := new(mocks.MockClubUC)
-	h := handler.NewBookingHandler(mockBooking, mockClub)
+	h := handler.NewBookingHandler(mockBooking, mockClub, nil)
 
 	club := &entities.Club{ID: "club1", PricePerHour: 10.0}
 	mockClub.On("GetByID", mock.Anything, "club1").Return(club, nil)
@@ -74,7 +74,7 @@ func TestCreateBooking_Success(t *testing.T) {
 func TestCancelBooking_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	mockUC := new(mocks.MockBookingUC)
-	h := handler.NewBookingHandler(mockUC, nil)
+	h := handler.NewBookingHandler(mockUC, nil, nil)
 
 	mockUC.On("Cancel", mock.Anything, "booking123").Return(nil).Once()
 

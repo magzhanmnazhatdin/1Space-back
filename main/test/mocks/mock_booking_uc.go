@@ -22,3 +22,8 @@ func (m *MockBookingUC) Create(ctx context.Context, b *entities.Booking) error {
 func (m *MockBookingUC) Cancel(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
+
+func (m *MockBookingUC) GetUsersByClub(ctx context.Context, clubID string) ([]string, error) {
+	args := m.Called(ctx, clubID)
+	return args.Get(0).([]string), args.Error(1)
+}
