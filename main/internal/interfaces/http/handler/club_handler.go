@@ -103,7 +103,27 @@ func (h *ClubHandler) UpdateClub(c *gin.Context) {
 }
 
 func (h *ClubHandler) DeleteClub(c *gin.Context) {
+	uid := c.GetString("uid")
+	role := c.GetString("role")
 	id := c.Param("id")
+
+	if role == "manager" {
+		club, err := h.uc.GetByID(c.Request.Context(), id)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		if club.ManagerID != uid {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
+	}
+
+	if role != "manager" && role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
 	if err := h.uc.Delete(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
