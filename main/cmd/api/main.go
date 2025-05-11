@@ -39,22 +39,25 @@ func main() {
 	clubRepo := fsrepo.NewClubRepoFS(fsClient)
 	compRepo := fsrepo.NewComputerRepoFS(fsClient)
 	bookRepo := fsrepo.NewBookingRepoFS(fsClient)
+	profileRepo := fsrepo.NewProfileRepoFS(fsClient)
 
 	// Use Cases
 	clubUC := usecase.NewClubUseCase(clubRepo, compRepo)
 	compUC := usecase.NewComputerUseCase(compRepo)
 	bookUC := usecase.NewBookingUseCase(bookRepo, compRepo)
 	paymentUC := usecase.NewPaymentUseCase()
+	profileUC := usecase.NewProfileUseCase(profileRepo)
 
 	// Handlers
 	clubH := handler.NewClubHandler(clubUC)
 	compH := handler.NewComputerHandler(compUC, clubUC)
-	bookH := handler.NewBookingHandler(bookUC, clubUC)
+	bookH := handler.NewBookingHandler(bookUC, clubUC, profileUC)
 	authH := handler.NewAuthHandler(authClient)
 	paymentH := handler.NewPaymentHandler(paymentUC)
 	userH := handler.NewUserHandler(authClient)
+	profileH := handler.NewProfileHandler(profileUC)
 
 	// Router setup
-	router := http.NewRouter(clubH, compH, bookH, authH, paymentH, userH, authClient, clubUC)
+	router := http.NewRouter(clubH, compH, bookH, authH, paymentH, userH, profileH, authClient, clubUC)
 	log.Fatal(router.Run(":8080"))
 }

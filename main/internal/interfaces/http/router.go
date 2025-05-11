@@ -17,6 +17,7 @@ func NewRouter(
 	authH *handler.AuthHandler,
 	paymentH *handler.PaymentHandler,
 	userH *handler.UserHandler,
+	profileH *handler.ProfileHandler,
 	authClient *auth.Client,
 	clubUC usecase.ClubUseCase,
 ) *gin.Engine {
@@ -42,6 +43,8 @@ func NewRouter(
 		middleware.AuthMiddleware(authClient),
 		middleware.RequireRole("user", "manager", "admin"))
 	{
+		protected.GET("/profile", profileH.GetProfile)
+		protected.PUT("/profile", profileH.UpdateProfile)
 		protected.GET("/bookings", bookH.GetUserBookings)
 		protected.POST("/bookings", bookH.CreateBooking)
 		protected.PUT("/bookings/:id/cancel", bookH.CancelBooking)
@@ -59,6 +62,7 @@ func NewRouter(
 		manager.POST("/clubs/:id/computers", middleware.ManagerOwnsClub(clubUC), compH.CreateComputerList)
 		manager.PUT("/computers/:id", compH.UpdateComputer)
 		manager.DELETE("/computers/:id", compH.DeleteComputer)
+		manager.GET("/clubs/:clubId/users", bookH.GetBookingUsers)
 	}
 
 	// маршруты для админов (только admin)
@@ -67,9 +71,8 @@ func NewRouter(
 		middleware.RequireRole("admin"),
 	)
 	{
-		// управление пользователями, в т.ч. смена роли
 		admin.PUT("/users/:id/role", userH.ChangeRole)
-		// сюда можно добавить ещё endpoints для админа
+		admin.GET("/clubs/:clubId/users", bookH.GetBookingUsers)
 	}
 
 	return r

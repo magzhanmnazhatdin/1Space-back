@@ -30,7 +30,7 @@ func setupRouter() *gin.Engine {
 	bookH := handler.NewBookingHandler(bookUC, clubUC)
 
 	// router без auth/payment/user
-	r := interfaceHttp.NewRouter(clubH, compH, bookH, nil, nil, nil, nil)
+	r := interfaceHttp.NewRouter(clubH, compH, bookH, nil, nil, nil, nil, nil, nil)
 
 	// заменим middleware на фейковый, всегда возвращающий 401
 	r.Use(mocks.FakeAuthMiddlewareAlways401())
