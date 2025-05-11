@@ -13,16 +13,19 @@ import (
 type BookingHandler struct {
 	bookingUC usecase.BookingUseCase
 	clubUC    usecase.ClubUseCase
+	profileUC usecase.ProfileUseCase
 }
 
 // NewBookingHandler creates a new BookingHandler with injected use cases.
 func NewBookingHandler(
 	bookingUC usecase.BookingUseCase,
 	clubUC usecase.ClubUseCase,
+	profileUC usecase.ProfileUseCase,
 ) *BookingHandler {
 	return &BookingHandler{
 		bookingUC: bookingUC,
 		clubUC:    clubUC,
+		profileUC: profileUC,
 	}
 }
 
@@ -98,6 +101,46 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, booking)
+}
+
+func (h *BookingHandler) GetBookingUsers(c *gin.Context) {
+	role := c.GetString("role")
+	uid := c.GetString("uid")
+	clubID := c.Param("clubId")
+
+	// менеджер — только свой клуб
+	if role == "manager" {
+		club, err := h.clubUC.GetByID(c.Request.Context(), clubID)
+		if err != nil || club.ManagerID != uid {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
+	}
+	// допускаем только manager и admin
+	if role != "manager" && role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	uids, err := h.bookingUC.GetUsersByClub(c.Request.Context(), clubID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// собираем профили
+	var profiles []entities.Profile
+	for _, userID := range uids {
+		p, err := h.profileUC.GetProfile(c.Request.Context(), userID)
+		if err != nil {
+			// если профиля нет, вернём минимум с user_id
+			profiles = append(profiles, entities.Profile{UserID: userID})
+		} else {
+			profiles = append(profiles, *p)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"users": profiles})
 }
 
 func (h *BookingHandler) CancelBooking(c *gin.Context) {

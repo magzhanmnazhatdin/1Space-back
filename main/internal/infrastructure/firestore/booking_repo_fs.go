@@ -33,6 +33,24 @@ func (r *bookingRepoFS) FindAllByUser(ctx context.Context, userID string) ([]*en
 	return out, nil
 }
 
+func (r *bookingRepoFS) FindAllByClub(ctx context.Context, clubID string) ([]*entities.Booking, error) {
+	iter := r.client.Collection("bookings").
+		Where("club_id", "==", clubID).
+		Documents(ctx)
+	docs, err := iter.GetAll()
+	if err != nil {
+		return nil, err
+	}
+	var out []*entities.Booking
+	for _, doc := range docs {
+		var b entities.Booking
+		doc.DataTo(&b)
+		b.ID = doc.Ref.ID
+		out = append(out, &b)
+	}
+	return out, nil
+}
+
 func (r *bookingRepoFS) FindByID(ctx context.Context, id string) (*entities.Booking, error) {
 	doc, err := r.client.Collection("bookings").Doc(id).Get(ctx)
 	if err != nil {

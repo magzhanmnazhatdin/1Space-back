@@ -11,4 +11,5 @@ type BookingRepository interface {
 	FindByID(ctx context.Context, id string) (*entities.Booking, error)
 	Create(ctx context.Context, b *entities.Booking) error
 	Update(ctx context.Context, b *entities.Booking) error
+	FindAllByClub(ctx context.Context, clubID string) ([]*entities.Booking, error)
 }

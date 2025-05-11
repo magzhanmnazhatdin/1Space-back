@@ -12,6 +12,7 @@ type BookingUseCase interface {
 	GetByUser(ctx context.Context, userID string) ([]*entities.Booking, error)
 	Create(ctx context.Context, b *entities.Booking) error
 	Cancel(ctx context.Context, id string) error
+	GetUsersByClub(ctx context.Context, clubID string) ([]string, error)
 }
 
 // booking_usecase.go
@@ -50,6 +51,22 @@ func (u *bookingInteractor) Create(ctx context.Context, b *entities.Booking) err
 		}
 	}
 	return fmt.Errorf("computer not found for update availability")
+}
+
+func (u *bookingInteractor) GetUsersByClub(ctx context.Context, clubID string) ([]string, error) {
+	bookings, err := u.bookingRepo.FindAllByClub(ctx, clubID)
+	if err != nil {
+		return nil, err
+	}
+	uniq := make(map[string]struct{})
+	for _, b := range bookings {
+		uniq[b.UserID] = struct{}{}
+	}
+	var users []string
+	for uid := range uniq {
+		users = append(users, uid)
+	}
+	return users, nil
 }
 
 func (u *bookingInteractor) Cancel(ctx context.Context, id string) error {

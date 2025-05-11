@@ -51,7 +51,7 @@ func main() {
 	// Handlers
 	clubH := handler.NewClubHandler(clubUC)
 	compH := handler.NewComputerHandler(compUC, clubUC)
-	bookH := handler.NewBookingHandler(bookUC, clubUC)
+	bookH := handler.NewBookingHandler(bookUC, clubUC, profileUC)
 	authH := handler.NewAuthHandler(authClient)
 	paymentH := handler.NewPaymentHandler(paymentUC)
 	userH := handler.NewUserHandler(authClient)

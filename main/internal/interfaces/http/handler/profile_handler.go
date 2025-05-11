@@ -25,7 +25,6 @@ func (h *ProfileHandler) GetProfile(c *gin.Context) {
 
 	p, err := h.uc.GetProfile(c.Request.Context(), uid)
 	if err != nil {
-		// если firestore вернул NotFound — просто создаём пустой профиль
 		if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
 			p = &entities.Profile{
 				UserID:      uid,
